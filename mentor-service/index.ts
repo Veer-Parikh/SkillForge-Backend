@@ -202,6 +202,35 @@ const myProfile = async (req: myRequest, res: Response): Promise<void> => {
 };
 
 
+const addUser = async (req: Request, res: Response) : Promise<void> =>{
+  try{ 
+    const { userId } = req.body; 
+    const mentor = await prisma.mentor.update({
+      where:{
+        id:req.params.id
+      },
+      data:{
+        currentUsers:{
+          push:userId
+        }
+      }
+    })
+  } catch(error){
+    console.log(error);
+    res.send(error);
+    return;
+  }
+}
+
+const removeUser = async (req: Request,res:Response) : Promise<void> => {
+  try{
+
+  } catch(error) {
+    console.log(error)
+  }
+}
+
+
 // Routes
 app.post("/api/mentor/create", createMentor);
 app.post("/api/mentor/login-otp", loginUsingOTP);

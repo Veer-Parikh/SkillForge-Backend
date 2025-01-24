@@ -26,6 +26,8 @@ model Mentor {
   availableTo   DateTime?
   otp           String?
   otpExpiration DateTime?
+  currentUsers  String[]  @default([])
+  previousUsers String[]  @default([])
   createdAt     DateTime  @default(now())
   updatedAt     DateTime  @updatedAt
 }
