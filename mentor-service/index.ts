@@ -6,6 +6,7 @@ const jwt = require("jsonwebtoken");
 const bcrypt = require("bcrypt");
 const { generateOTP, getOtpExpiration, sendOTP } = require("./middleware/otp");
 import { myRequest } from "./types/types";
+import axios from "axios";
 // Load environment variables
 dotenv.config();
 
@@ -207,7 +208,7 @@ const addUser = async (req: Request, res: Response) : Promise<void> =>{
     const { userId } = req.body; 
     const mentor = await prisma.mentor.update({
       where:{
-        id:req.params.id
+        id:req.params.mentorId
       },
       data:{
         currentUsers:{
@@ -215,6 +216,7 @@ const addUser = async (req: Request, res: Response) : Promise<void> =>{
         }
       }
     })
+    res.send(mentor)
   } catch(error){
     console.log(error);
     res.send(error);
@@ -222,13 +224,126 @@ const addUser = async (req: Request, res: Response) : Promise<void> =>{
   }
 }
 
-const removeUser = async (req: Request,res:Response) : Promise<void> => {
-  try{
+const removeUser = async (req: Request, res: Response): Promise<void> => {
+  try {
+    const { userId } = req.body; 
 
-  } catch(error) {
-    console.log(error)
+    const mentor = await prisma.mentor.findUnique({
+      where: {
+        id: req.params.mentorId, 
+      },
+    });
+
+    if (!mentor) {
+      res.status(404).send({ message: "Mentor not found" });
+      return;
+    }
+    const updatedCurrentUsers = mentor.currentUsers.filter((id) => id !== userId);
+
+    const updatedMentor = await prisma.mentor.update({
+      where: {
+        id: req.params.id,
+      },
+      data: {
+        currentUsers: {
+          set: updatedCurrentUsers, 
+        },
+        previousUsers: {
+          push:userId, 
+        },
+      },
+    });
+
+    console.log("User removed from currentUsers and added to previousUsers");
+    res.send(updatedMentor);
+    return;
+  } catch (error) {
+    console.error("Error in removeUser function:", error);
+    res.status(500).send(error);
+    return;
   }
-}
+};
+
+const findMyUsers = async (req: myRequest, res: Response): Promise<void> => {
+  try {
+    const mentorId = req.mentor?.id;
+
+    const mentor = await prisma.mentor.findUnique({
+      where: { id: mentorId },
+      select: { currentUsers: true },
+    });
+
+    if (!mentor) {
+      res.status(404).send({ message: 'Mentor not found' });
+      return;
+    }
+
+    const { currentUsers } = mentor;
+
+    if (!currentUsers || currentUsers.length === 0) {
+      res.status(200).send({ message: 'No current users found for this mentor' });
+      return;
+    }
+
+    const userResponses = await Promise.all(
+      currentUsers.map(async (userId) => {
+        try {
+          const response = await axios.get(`http://localhost:3000/api/user/${userId}`);
+          return response.data;
+        } catch (error) {
+          console.error(`Error fetching user with ID ${userId}:`, error);
+          return { userId, error: 'Failed to fetch user data' };
+        }
+      })
+    );
+
+    res.send({ users: userResponses });
+  } catch (error) {
+    console.error('Error in findMyUsers function:', error);
+    res.send(error);
+  }
+};
+
+const findMyPreviousUsers = async (req: myRequest, res: Response): Promise<void> => {
+  try {
+    const mentorId = req.mentor?.id;
+
+    const mentor = await prisma.mentor.findUnique({
+      where: { id: mentorId },
+      select: { previousUsers: true },
+    });
+
+    if (!mentor) {
+      res.status(404).send({ message: 'Mentor not found' });
+      return;
+    }
+
+    const { previousUsers } = mentor;
+
+    if (!previousUsers || previousUsers.length === 0) {
+      res.status(200).send({ message: 'No current users found for this mentor' });
+      return;
+    }
+
+    const userResponses = await Promise.all(
+      previousUsers.map(async (userId) => {
+        try {
+          const response = await axios.get(`http://localhost:3000/api/user/${userId}`);
+          return response.data; 
+        } catch (error) {
+          console.error(`Error fetching user with ID ${userId}:`, error);
+          return { userId, error: 'Failed to fetch user data' }; 
+        }
+      })
+    );
+
+    res.send({ users: userResponses });
+  } catch (error) {
+    console.error('Error in findMyPreviousUsers function:', error);
+    res.send(error);
+  }
+};
+
 
 
 // Routes
@@ -238,7 +353,12 @@ app.post("/api/mentor/login-password", loginUsingPassword);
 app.post("/api/mentor/verify", verify);
 app.get("/api/mentor", getMentors);
 app.post("/api/mentor/:identifier",authMiddleware, getMentor);
-app.get("/api/mentor/myProfile",authMiddleware,myProfile)
+app.get("/api/mentor/myProfile",authMiddleware,myProfile);
+app.get("/api/mentor/getMyUsers",authMiddleware,findMyUsers);
+app.get("/api/mentor/getMyPastUsers",authMiddleware,findMyPreviousUsers);
+
+app.put("/api/mentor/addUser/:mentorId",addUser);
+app.put("/api/mentor/removeUser/:mentorId",removeUser);
 
 const PORT = process.env.PORT || 5000;
 app.listen(PORT, () => {
