@@ -4,10 +4,12 @@ import { PrismaClient } from "@prisma/client";
 const jwt = require("jsonwebtoken");
 const { generateOTP, getOtpExpiration, sendOTP } = require("./middleware/otp");
 import { myRequest } from "./types/types";
+import axios from "axios";
 const prisma = new PrismaClient();
 
-const createMentorship = async (req: myRequest, res: Response): Promise<void> => {
+export const createMentorship = async (req: myRequest, res: Response): Promise<void> => {
     const userId = req.user?.id;
+    const mentorId = req.body.mentorId;
     if (!userId) {
         res.status(401).json({ message: 'User not authenticated' });
         return;
@@ -15,12 +17,15 @@ const createMentorship = async (req: myRequest, res: Response): Promise<void> =>
     try {
         const mentorship = await prisma.mentorship.create({
             data:{
-                mentorId:req.body.mentorId,
+                mentorId,
                 userId:userId,
             }
         })
+        const mentor = await axios.put(`http://localhost:5000/api/mentor/addUser/${mentorId}`,{
+            userId
+        })
         console.log("successfully added as your mentor");
-        res.json({message:"Mentor added successfully",mentorship});
+        res.json({message:"Mentor added successfully",mentorship,mentor});
         return;
     } catch (error){    
         console.error(error);
@@ -29,8 +34,9 @@ const createMentorship = async (req: myRequest, res: Response): Promise<void> =>
     }
 }
 
-const endMentorship = async (req:myRequest,res:Response) : Promise<void> =>{
+export const endMentorship = async (req:myRequest,res:Response) : Promise<void> =>{
     try{
+        const mentorId = req.body.mentorId
         const mentorship = await prisma.mentorship.update({
             where:{
                 id:req.body.id
@@ -39,8 +45,11 @@ const endMentorship = async (req:myRequest,res:Response) : Promise<void> =>{
                 endAt:new Date()
             }
         });
+        const mentor = await axios.put(`http://localhost:5000/api/mentor/removeUser/${mentorId}`,{
+            userId:req.user?.id
+        })
         console.log("mentorship ended");
-        res.send(mentorship);
+        res.send({mentorship,mentor});
         return;
     } catch(error) {
         console.log(error)

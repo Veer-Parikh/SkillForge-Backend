@@ -200,7 +200,6 @@ const myProfile = async (req: myRequest, res: Response): Promise<void> => {
 };
 
 
-// Routes
 app.post("/api/user/create", createUser);
 app.post("/api/user/login-otp", loginUsingOTP);
 app.post("/api/user/login-password", loginUsingPassword);
