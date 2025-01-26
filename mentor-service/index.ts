@@ -103,6 +103,7 @@ const loginUsingPassword = async (req: Request, res: Response): Promise<void>=> 
 
     const token = jwt.sign({ id: mentor.id }, process.env.SECRET_KEY);
     res.json({ token, mentor });
+    console.log("login successful")
   } catch (err) {
     console.log(err);
     res.status(500).json({ error: "Failed to login" });
@@ -202,7 +203,6 @@ const myProfile = async (req: myRequest, res: Response): Promise<void> => {
   }
 };
 
-
 const addUser = async (req: Request, res: Response) : Promise<void> =>{
   try{ 
     const { userId } = req.body; 
@@ -242,7 +242,7 @@ const removeUser = async (req: Request, res: Response): Promise<void> => {
 
     const updatedMentor = await prisma.mentor.update({
       where: {
-        id: req.params.id,
+        id: req.params.mentorId,
       },
       data: {
         currentUsers: {
@@ -288,7 +288,7 @@ const findMyUsers = async (req: myRequest, res: Response): Promise<void> => {
     const userResponses = await Promise.all(
       currentUsers.map(async (userId) => {
         try {
-          const response = await axios.get(`http://localhost:3000/api/user/${userId}`);
+          const response = await axios.post(`http://localhost:3000/api/user/${userId}`);
           return response.data;
         } catch (error) {
           console.error(`Error fetching user with ID ${userId}:`, error);
@@ -328,7 +328,7 @@ const findMyPreviousUsers = async (req: myRequest, res: Response): Promise<void>
     const userResponses = await Promise.all(
       previousUsers.map(async (userId) => {
         try {
-          const response = await axios.get(`http://localhost:3000/api/user/${userId}`);
+          const response = await axios.post(`http://localhost:3000/api/user/${userId}`);
           return response.data; 
         } catch (error) {
           console.error(`Error fetching user with ID ${userId}:`, error);
@@ -344,6 +344,24 @@ const findMyPreviousUsers = async (req: myRequest, res: Response): Promise<void>
   }
 };
 
+const clear = async (req:myRequest,res:Response): Promise<void> => {
+  try{
+    const mentor = await prisma.mentor.update({
+      where:{
+        id:req.mentor?.id
+      },
+      data:{
+        currentUsers:[],
+        previousUsers:[]
+      }
+    })
+    res.send(mentor)
+  }catch(error){
+    console.log(error);
+    res.send(error);
+    return;
+  }
+}
 
 
 // Routes
@@ -352,13 +370,14 @@ app.post("/api/mentor/login-otp", loginUsingOTP);
 app.post("/api/mentor/login-password", loginUsingPassword);
 app.post("/api/mentor/verify", verify);
 app.get("/api/mentor", getMentors);
-app.post("/api/mentor/:identifier",authMiddleware, getMentor);
+app.post("/api/mentor/:identifier", getMentor);
 app.get("/api/mentor/myProfile",authMiddleware,myProfile);
 app.get("/api/mentor/getMyUsers",authMiddleware,findMyUsers);
 app.get("/api/mentor/getMyPastUsers",authMiddleware,findMyPreviousUsers);
 
 app.put("/api/mentor/addUser/:mentorId",addUser);
 app.put("/api/mentor/removeUser/:mentorId",removeUser);
+app.put("/api/mentor/clear",authMiddleware,clear);
 
 const PORT = process.env.PORT || 5000;
 app.listen(PORT, () => {

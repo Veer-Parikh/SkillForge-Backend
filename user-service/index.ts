@@ -98,6 +98,7 @@ const loginUsingPassword = async (req: Request, res: Response): Promise<void>=> 
 
     const token = jwt.sign({ id: user.id }, process.env.SECRET_KEY);
     res.json({ token, user });
+    console.log("login successful")
   } catch (err) {
     console.log(err);
     res.status(500).json({ error: "Failed to login" });
@@ -136,7 +137,9 @@ const verify = async (req: Request, res: Response): Promise<void>=> {
 
 const getUsers = async (req: Request, res: Response): Promise<void>=> {
   try {
-    const users = await prisma.user.findMany();
+    const users = await prisma.user.findMany({
+      include:{Mentorship:true}
+    });
     res.json(users);
   } catch (err) {
     res.status(500).json({ error: "Failed to fetch users" });
@@ -185,6 +188,7 @@ const myProfile = async (req: myRequest, res: Response): Promise<void> => {
 
     const user = await prisma.user.findUnique({
       where: { id },
+      include:{Mentorship:true}
     });
 
     if (!user) {
@@ -205,10 +209,13 @@ app.post("/api/user/login-otp", loginUsingOTP);
 app.post("/api/user/login-password", loginUsingPassword);
 app.post("/api/user/verify", verify);
 app.get("/api/user", getUsers);
-app.post("/api/user/:identifier",authMiddleware, getUser);
+app.post("/api/user/:identifier", getUser);
 app.get("/api/user/myProfile",authMiddleware,myProfile)
 
 const PORT = process.env.PORT || 3000;
 app.listen(PORT, () => {
   console.log(`User service running on port ${PORT}`);
 });
+
+import mentorshipRoutes from "./mentorshipRoutes"
+app.use("/",mentorshipRoutes)
