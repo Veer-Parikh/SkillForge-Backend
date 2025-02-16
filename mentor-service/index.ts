@@ -48,6 +48,11 @@ const createMentor = async (req: Request, res: Response): Promise<void> => {
       },
     });
 
+    await axios.post("http://localhost:7000/api/chat/createCommunity", {
+      mentorId: mentor.id,
+      mentorName: mentor.name,
+    });
+
     await sendOTP(number, otp);
     console.log("OTP sent successfully");
     console.log("Mentor created successfully");

@@ -40,7 +40,12 @@ export const createMentorship = async (req: myRequest, res: Response): Promise<v
       const updatedMentor = await axios.put(`http://localhost:5000/api/mentor/addUser/${mentorId}`, {
         userId,
       });
-  
+
+      await axios.post("http://localhost:7000/api/chat/addUserToCommunity", {
+        mentorId,
+        userId,
+      });
+
       console.log("Successfully added as your mentor");
       res.json({ message: "Mentor added successfully", mentorship, mentor: updatedMentor.data });
     } catch (error) {
