@@ -1,0 +1,29 @@
+datasource db {
+  provider = "mongodb"
+  url      = env("DATABASE_URL")
+}
+
+generator client {
+  provider = "prisma-client-js"
+}
+
+model Chat {
+  id           String    @id @default(auto()) @map("_id") @db.ObjectId
+  participants String[] // Array of user IDs (private or group)
+  messages     Message[] @relation("ChatMessages")
+  isGroup      Boolean   @default(false) // Distinguish private vs. group chat
+  groupName    String? // Optional: Group name for mentor-user groups
+  mentorId     String
+}
+
+model Message {
+  id        String   @id @default(auto()) @map("_id") @db.ObjectId
+  chatId    String   @db.ObjectId
+  senderId  String // User ID of the message sender
+  content   String // Content of the message
+  timestamp DateTime @default(now()) // Time the message was sent
+  readBy    String[] // Array of user IDs who have read this message
+
+  // Relation to the Chat model
+  chat Chat @relation("ChatMessages", fields: [chatId], references: [id])
+}
